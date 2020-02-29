@@ -8,11 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from visualization.Visualizer import Visualizer
-from scipy.stats import pearsonr
 from scipy.stats import zscore
 # seed random number generator
 
-total_samples = 1000000
+total_samples = 10000
 
 ##################
 # TIMER FUNCTION #
@@ -27,6 +26,9 @@ data_files = []
 for file in os.listdir("data"):
 	if file.endswith(".hdf"):
 		data_files.append(cwd + "\\data" + f'\\{file}')
+
+# Just take first sample (Small test)
+data_files = data_files[:1]
 
 files = [h5py.File(f,'r') for f in data_files]
 datas = [f['DYNAMIC DATA'] for f in files]
@@ -52,10 +54,15 @@ for ch in channels:
 	# channel_dat[ch] = zscore(datas[0][ch]['MEASURED'])
 	# debug_time(f"Normed channel {ch} | {len(compound_data)}",norm_t,time.time())
 
+# Done with loading data, close file
+for f in files:
+	f.close()
+
 print(f"Channels: {num_channels}")
 # num_channels = min(num_channels,10)
 corr_M = [[0 for i in range(num_channels)] for j in range(num_channels)]
 
+nan_channels = []
 for i in range(num_channels-1):
 	ch_a = channels[i]
 	dset1 = channel_dat[ch_a]
@@ -66,21 +73,18 @@ for i in range(num_channels-1):
 		corr = np.dot(dset1,dset2)/len(dset1)
 		if (math.isnan(corr)):
 			#print(f"Channels {i} and {j} corr = NaN")
-			continue
+			if (i == j):
+				nan_channels.append(ch_a)
+				# print(f"Inspect Channel {ch_a}")
 		else:
 			corr_M[i][j] = corr
 			corr_M[j][i] = corr
+
+print(nan_channels)
 
 corr_M = np.square(np.asmatrix(corr_M,dtype=float))
 my_dpi=96
 plt.figure(figsize=(2048/my_dpi,2048/my_dpi),dpi=my_dpi,frameon=False)
 plt.imshow(corr_M, cmap='cool', interpolation='nearest')
-plt.show()
-plt.savefig('corr_matrix.png',dpi=my_dpi*10)
-
-# visualizer = Visualizer(width=800,height=800)
-# corr_M_layer = visualizer.add_layer(corr_M.shape)
-# corr_M_layer.update(corr_M)
-# visualizer.update()
-# visualizer.write_img(fname)
-# visualizer.pause()
+# plt.show()
+plt.savefig('corr_matrix1.png',dpi=my_dpi*10)
