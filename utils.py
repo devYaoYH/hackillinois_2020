@@ -27,11 +27,10 @@ class Channel(object):
 			print(f"Channel: {self.ch}:{r2_fit}")
 			for i,p in enumerate(est.params):
 				if (abs(p) > 0.05):
-					if (abs(p > 1)):
+					if (abs(p) > 1):
 						print(f"High correlation w Channel {labels[i-1]}: {p}")
 					self.covariates.append(labels[i-1])
-			return True
-		return False
+		return r2_fit, est.params
 	def predict(self,X):
 		X = X.transpose()
 		if (self.lin_reg is None):
@@ -182,6 +181,13 @@ def extract_data(data_file=None,filter=filter_data,max_len=10000):
 	channels = list(datas.keys())
 	num_channels = len(channels)
 
+	rand_end = 0
+	if (len(datas[channels[0]]['MEASURED']) > max_len):
+		rand_end = len(datas[channels[0]]['MEASURED']) - max_len
+	else:
+		rand_end = 1
+	rand_start = np.random.randint(0,rand_end)
+
 	# data_matrix = np.asmatrix([datas[ch]['MEASURED'][:max_len] for ch in channels])
 	# data_matrix.transpose()
 	# col_idx = [i for i in range(len(data_matrix))]
@@ -196,5 +202,5 @@ def extract_data(data_file=None,filter=filter_data,max_len=10000):
 		if (i%(num_channels//10) == 0):
 			print(f"Processing: {ch} | ...{i*100/num_channels}\%")
 		# channel_dat[ch] = norm_zero(filter(np.asarray(datas[ch]['MEASURED'][:max_len])))
-		channel_dat[ch] = norm_zero(np.asarray(datas[ch]['MEASURED']))
+		channel_dat[ch] = norm_zero(np.asarray(datas[ch]['MEASURED'][rand_start:rand_start+max_len]))
 	return channels,channel_dat

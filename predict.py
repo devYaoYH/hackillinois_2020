@@ -3,7 +3,7 @@ from utils import *
 from significance import get_test_z
 from scipy.stats import pearsonr
 
-model = pickle.load(open('unnormed_mixed_model.mdl','rb'))
+model = pickle.load(open('normed_mixed_model.mdl','rb'))
 channels = model['channels']
 channels_idx = {ch: i for i,ch in enumerate(channels)}
 num_channels = len(channels)
@@ -36,8 +36,8 @@ def run_trail():
 			sensors[ch].correlations.append(corr)
 
 def run_test():
-	avail_channels, channel_dat = extract_data(data_file="train\\COOLCAT_20100815_055813_69_20100815_055813_695.hdf")
-	# avail_channels, channel_dat = draw_sample(data_path="train",total_samples=1000)
+	avail_channels, channel_dat = extract_data(data_file="train\\COOLCAT_20100815_055813_69_20100815_055813_695.hdf", max_len=1000)
+	# avail_channels, channel_dat = draw_sample(data_path="train",total_samples=10000)
 	data_length = len(channel_dat[list(channel_dat.keys())[0]])
 
 	err_ch = []
