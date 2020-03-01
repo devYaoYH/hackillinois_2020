@@ -73,6 +73,10 @@
 \author{Aidan Kelley}
 \begin{document}
 
+\section{Introduction}
+
+In this project we propose a method for detecting sensor anomalies in time-series data based on the difference between the predicted and actual output of a sensor. We use a linear regression model to predict the output of a sensor based on the outputs of sensors on other channels. We additionally validate our model on fault-free data to determine how well our model correlates with actual sensor output. Then, we can run our model in real time and can detect sensor anomalies when the correlation between the actual and expected sensor data is far from the expected correlation.
+
 \section{Assumptions}
 
 We treat the data as if it were a point cloud, meaning that at each time step, $t$, the values of all channels at time $t$ as a vector are a point. We treat all points as if they are independent and are drawn from the same distribution.
@@ -119,6 +123,8 @@ $$r_i = \Cov(A, B) = \E[AB] = \frac{1}{k} \sum_{i = 1}^k A_i B_i,$$
 
 which, interestingly, is the cosine-distance if we treat these as scalars (an aside: since $\Var[A] = \Var[B] = 1$, this says $\frac{1}{k} \norm{A}_2^2 = \frac{1}{k} \norm{B}_2^2 = 1$, meaning that $\norm{A}_2 = \norm{B}_2 = \sqrt{k}$, so the cosine distance $\frac{A \cdot B}{\norm{A}_2 \norm{B}_2}$ is $\sum_{i = 1}^k A_i B_i / \sqrt{k * k} = \frac{1}{k} \sum_{i = 1}^k A_i B_i = r_i.$).
 
+\section{Detecting Anomalies}
+
 Now, we want to run a statistical test to determine if the window ending at $t_0$ represents an anomaly. Then, we use the two hypotheses:
 
 $$H_0: \mu_{r_i} = \rho_i,
@@ -158,13 +164,20 @@ which we can calculate using existing normal CDF functions.
 
 We can see from above that we can calculate $r_i$ in $\Theta(k)$ time, where $k$ is the the size of the window, which isn't bad. However, if we want the anomaly detection system to work in real-time, we want to calculate $r_i$ faster than this. We will show a method for calculating $r_i$ in amortized $\Theta(1)$ time and using $\Theta(k)$ memory, assuming that we are calculating $r_i$ for every window of size $k$.
 
-The method works by using two different queues that store the last $k$ values and additionally by maintaining a number of different accumulators that store some value that changes as we move from left to right.
+The method works by using two different queues that store the last $k$ values and additionally by maintaining a number of different accumulators that store some value that changes as we move from left to right. Each queue stores the last $k$ values of $X_i$ and $Y_i$. We have to spend $\Theta(k)$ time initially populating each of the queues but when we move from the window ending at $t_0$ to the one ending at $t_0 + 1$, we extract the oldest element from each of the queues, say $X_0$ and $Y_0$, and replace it with the newest element, say $X_k$ and $Y_k$. Then, we use the old values to subtract off the accumulators and the new values to add to them to keep accurate. We'll denote $\sum(Z)$ to be the accumulator $\sum_{i = 1}^k Z_i$. For example, $\sum(X) = \sum_{i = 1}^k X_i$. We maintain the following accumulators:
+
+$$\sum(X), \sum(Y), \sum(X^2), \sum(Y^2), \sum(XY), \sum((XY)^2), \sum(X^2 Y), \sum(XY^2).$$
 
 For calculating $r_i$, we have
 
-$$r_i = \Cov(A, B) = \Cov \left( \frac{X_i - \bar X}{\sigma_X}, \frac{Y_i - \bar Y}{\sigma_Y}\right)$$
+$$r_i = \Cov(A, B) = \Cov \left( \frac{X - \bar X}{\sigma_X}, \frac{Y - \bar Y}{\sigma_Y}\right)$$
 
-$$= \frac{1}{\sigma_X \sigma_Y} \Cov(X_i - \bar X, Y_i - \bar Y)$$
+$$= \frac{1}{\sigma_X \sigma_Y} \Cov(X - \bar X, Y - \bar Y)$$
+$$ = \frac{1}{\sigma_X \sigma_Y} \E[XY] - \bar X \bar Y.$$
+
+We will write down how to calculate all of the variables in this expression in terms of our accumulators.
+
+$$\sigma_X = \frac{1}{n}$$
 
 
 %Then, let $\bar X = \E_{t_0 - k < t \le t_0}[f_i(C_i(t))]$ and $\bar Y =  \E_{t_0 - k < t \le t_0}[c_i(t)],$ the means of the predicted data series and the actual data series over the window. These are equal to
