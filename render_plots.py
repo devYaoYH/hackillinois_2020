@@ -45,13 +45,15 @@ def plot_channel_overlap(ch):
 
 plot_channel_overlap('ch_74')
 
+anomalous_channels = []
+
 # Initial unnormed_model.mdl
 # anomalous_channels = ['ch_110', 'ch_14', 'ch_32', 'ch_36', 'ch_37', 'ch_43', 'ch_48', 'ch_49', 'ch_53', 'ch_54', 'ch_56', 'ch_58', 'ch_59', 'ch_61', 'ch_90', 'ch_95', 'ch_99']
 
 # Start first 1000 datapoints on mixed_model
 # anomalous_channels = ['ch_103', 'ch_111', 'ch_113', 'ch_119', 'ch_226', 'ch_306', 'ch_36', 'ch_43', 'ch_48', 'ch_50', 'ch_52', 'ch_53', 'ch_55', 'ch_56', 'ch_57', 'ch_58', 'ch_61', 'ch_68', 'ch_69', 'ch_75', 'ch_87', 'ch_88', 'ch_9', 'ch_91', 'ch_95', 'ch_96', 'ch_97']
 
-anomalous_channels = ['ch_103', 'ch_110', 'ch_111', 'ch_226', 'ch_306', 'ch_36', 'ch_37', 'ch_39', 'ch_43', 'ch_44', 'ch_48', 'ch_50', 'ch_52', 'ch_55', 'ch_56', 'ch_60', 'ch_61', 'ch_62', 'ch_64', 'ch_68', 'ch_9', 'ch_91', 'ch_95', 'ch_96', 'ch_98', 'ch_99']
+# anomalous_channels = ['ch_103', 'ch_110', 'ch_111', 'ch_226', 'ch_306', 'ch_36', 'ch_37', 'ch_39', 'ch_43', 'ch_44', 'ch_48', 'ch_50', 'ch_52', 'ch_55', 'ch_56', 'ch_60', 'ch_61', 'ch_62', 'ch_64', 'ch_68', 'ch_9', 'ch_91', 'ch_95', 'ch_96', 'ch_98', 'ch_99']
 
 # normal_channels = [r for r in random.sample(list(test_file.keys()), 10) if r not in anomalous_channels]
 
