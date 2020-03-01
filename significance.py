@@ -61,17 +61,6 @@ def get_test_z(real, pred, corr):
   return z_score
 
 
-# n = 10000
-# z_array = [0 for i in range(n)]
-
-# for i in range(n):
-#   x = np.random.multivariate_normal([0, 0], [[1, 0.5],[0.5, 1]], 1000)
-#   z_array[i] = test_significance(x[:, 0], x[:, 1], 0.6)
-
-
-# plt.hist(z_array, bins = 25)
-plt.show()
-
 class RotatingQueue():
   def __init__(self, size):
     self.size = size
@@ -175,77 +164,28 @@ class StatsAccum():
 
     return r_i, sample_std
 
-  def calc_p(self, r_i, sample_std, rho):
+  def calc_p(self, rho):
     # described in "Detecting Anomalies"
+
+    r_i, sample_std = self.calc_stats()
+
     abs_z = abs((r_i - rho)/sample_std)
     return 2 * norm.cdf(-1 * abs_z)
 
-acc = StatsAccum(10)
+  def calc_z(self, rho):
+    r_i, sample_std = self.calc_stats()
+    z = (r_i - rho)/sample_std
 
-for i in range(20):
-  acc.add_point(i, i % 3)
-  if (i >= 9):
-    print(acc.calc_stats())
-    get_test_z(acc.x_queue.buffer, acc.y_queue.buffer, 10)
+    return z
+
+# acc = StatsAccum(10)
+
+# for i in range(20):
+#   acc.add_point(i, i % 3)
+#   if (i >= 9):
+#     print(acc.calc_stats())
+#     get_test_z(acc.x_queue.buffer, acc.y_queue.buffer, 10)
     
-
-
-
-# class MeanVarAccum():
-
-#   def __init__(self, window_size):
-#     self.window_size = window_size
-#     self.sum = 0
-#     self.sum_squares = 0
-#     self.data_queue = RotatingQueue(window_size)
-
-#   def add_point(self, x):
-#     old_point = self.data_queue.add_pop(x)
-
-#     self.sum = self.sum + x - old_point
-#     self.sum_squares = self.sum_squares + x**2 - old_point**2
-
-#   def get_mean(self):
-#     return 1.0 * self.sum / self.window_size;
-
-#   def get_var(self):
-#     n = self.window_size
-#     return 1.0 / n * self.sum_squares - self.get_mean() ** 2
-
-#   def get_sample_var(self):
-#     n = self.window_size
-#     return 1.0 * n / (n - 1) * self.get_var()
-
-# class CorrAccum():
-
-#   def __init__(self, window_size):
-#     self.window_size = window_size
-#     self.product_accum = MeanVarAccum(window_size)
-#     self.predict_accum = MeanVarAccum(window_size)
-#     self.sample_accum = MeanVarAccum(window_size)
-
-#   def add_point(self, x):
-#     self.product_accum.add_point(x)
-#     self.predict_accum.add_point(x)
-#     self.sample_accum.add_point(x)
-
-#   def get_stats():
-#     # return test_corr, corr_std
-#     # this finds E((x - mu_x)(y - mu_y)) = E(xy) - mu_x * mu_y
-#     expectation_XY = self.product_accum.get_mean()
-#     mean_X = self.sample_accum.get_mean()
-#     mean_Y = self.predict_accum.get_mean()
-
-#     var_X = self.sample_accum.get_var()
-#     var_Y = self.predict_accum.get_var()
-
-#     covariance = expectation_XY - mean_X * mean_Y
-
-#     # this finds E(((x - mu_x)(y - mu_y)/sqrt(varX * varY) - test_corr))^2)
-#     # = E(((x - mu_x)(y - mu_y))^2)/varX/varY - test_corr^2
-#     # = 
-#     test_corr = covariance / math.sqrt(var_X * var_Y)
-
 
 
 
@@ -259,8 +199,6 @@ for i in range(20):
 
 # print(sample_var(range(10), 10))
 # print(acc.get_sample_var()  )
-
-
 
 
 
