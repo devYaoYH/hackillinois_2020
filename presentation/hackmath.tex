@@ -1,0 +1,203 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+%\usepackage[left=0.7in,right=0.7in,top=1in,bottom=0.7in]{geometry}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\usepackage[sc]{mathpazo}
+\newcommand{\bN}{\mathbb{N}}
+\newcommand{\bR}{\mathbb{R}}
+\newcommand{\bC}{\mathbb{C}}
+\newcommand{\bZ}{\mathbb{Z}}
+\newcommand{\bQ}{\mathbb{Q}}
+
+\newcommand{\A}{\alpha}
+
+\newcommand{\e}{\epsilon}
+\newcommand{\D}{\delta}
+
+\newcommand{\liminfty}[1]{\lim_{ #1 \to \infty}}
+\newcommand{\Hom}{\mathrm{Hom}}	
+\newcommand{\twom}[4]{\[\left[ \begin{array}{cc} #1&#2\\#3&#4\end{array}\right]\]}
+\newcommand{\diff}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\diffn}[3]{\frac{\partial^{#1} #2}{\partial #3^{#1}}}
+\newcommand{\diffs}[2]{\diffn{2}{#1}{#2}}
+\newcommand{\diffm}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+\newcommand{\del}{\nabla}
+\newcommand{\norm}[1]{\left\Vert #1 \right\Vert}
+\newcommand{\crossproductA}[6]{\begin{vmatrix}
+\vec i & \vec j & \vec k \\
+#1 & #2 & #3 \\
+#4 & #5 & #6 \\
+\end{vmatrix}}
+\newcommand{\crossproductB}[6]{\begin{vmatrix}
+#2 & #3 \\
+#5 & #6 \\
+\end{vmatrix} \vec i
+- \begin{vmatrix}
+#1 & #3 \\
+#4 & #6 \\
+\end{vmatrix} \vec j
++ \begin{vmatrix}
+#1 & #2 \\
+#4 & #5 \\
+\end{vmatrix} \vec k
+}
+
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cB}{\mathcal{B}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cQ}{\mathcal{Q}}
+\newcommand{\cR}{\mathcal{R}}
+
+\newcommand{\colcup}[2]{\bigcup_{#1 \in #2} #1}
+\newcommand{\colcap}[2]{\bigcap_{#1 \in #2} #1}
+
+\newcommand{\colcalcup}[1]{\colcup{#1}{\mathcal{#1}}}
+\newcommand{\colcalcap}[1]{\colcap{#1}{\mathcal{#1}}}
+
+\DeclareMathOperator{\im}{Im}
+
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\Cov}{\mathrm{Cov}}
+\DeclareMathOperator{\Var}{\mathrm{Var}}
+
+\newcommand{\citebf}[1]{\textbf{Citations: }#1}
+\newcommand{\alone}{\citebf{I worked independently}}
+\newcommand{\lauren}{\citebf{I worked on this problem with Lauren Pusey-Nazzaro}}
+
+\usepackage{enumitem}
+
+\title{Homework 12}
+\author{Aidan Kelley}
+\begin{document}
+
+\section{Assumptions}
+
+We treat the data as if it were a point cloud, meaning that at each time step, $t$, the values of all channels at time $t$ as a vector are a point. We treat all points as if they are independent and are drawn from the same distribution.
+
+\section{Problem Setting}
+
+Say that we have $n$ channels, $c_1, \ldots, c_n$, and that $C_i(t)$ is the value of all channels but $i$ at a given time $t$.
+
+For each channel $c_i$ we have a map $f_i: \bR^{n - 1} \to \bR$ that, given the state of other channels at a given point in time, predicts the value of channel $i$. For each $f_i$, we also have the metric $\rho_i$, where
+
+$$\rho_i = \frac{\Cov_t(f_i(C_i(t)), c_i(t))}{\sqrt{\Var_t(f_i(C_i(t)))\Var_t(c_i(t))}},$$
+
+which is the Pearson correlation coefficient between the predicted channel, given by $f_i(C_i(t))$ for a singe point in time, and the actual channel $c_i$. Note that $|\rho_i|$ may not be large for some channels, meaning that our function $f_i$ does a poor job fitting this channel. However, our model in detecting anomalies will account for the fact that many fits may be imperfect.
+
+Then, we will use our model and some additional statistics to check for anomalies in real-time. At a high level, our model will calculate the correlation between how our model predicts what the sample will be versus what the sample actually is. For a window of length $k$, meaning entries from $t_0-k+1, \ldots t_0$, where $t_0$ is the current time, we will find $r_i$, the test statistic, given by
+
+$$r_i = \frac{\Cov_{t_0 - k < t \le t_0}(f_i(C_i(t)), c_i(t))}{\sqrt{\Var_{t_0 - k < t \le t_0}(f_i(C_i(t)))\Var_{t_0 - k < t \le t_0}(c_i(t))}},$$
+
+We will show how to calculate this test statistic efficiently (in $\Theta(1)$ time amortized per window) and will show how to reject a sample as an anomaly using probabilistic methods.
+
+For the rest of the discussion, we will fix some $t_0$ and some $k$. For notation purposes, let $X_j = f_i(C_i(t_0 - k + j))$ and $Y_j = c_i(t_0 - k + j)$ for $1 \le j \le k$, meaning that $X_j$ and $Y_j$ are the $j$th entries of the predicted and actual samples of the time series. Then, let $A$ and $B$ be the normalized version of $X$ and $Y$, meaning that
+
+$$A_i = \frac{X_i - \bar X}{\sigma_X},
+~~~~~~~~~~~~~
+B_i = \frac{X_i - \bar Y}{\sigma_Y},$$
+
+such that
+
+$$\E[A] = \E[B] = 0,
+~~~~~~~~~~~~~
+\Var(A) = \Var(B) = 1.$$
+
+It is important to note that this normalization is really just a "trick" to simplify the calculations. We additionally note that it does not matter whether we use the sample variance (multiplied by $\frac{k}{k - 1}$ or not as long as we are consistent and also use the sample covariance, as both result multiplying the top and bottom of the expression for $r_i$ by the same value. Now, with $A$ and $B$, we have that the expression for $r_i$ is
+
+$$r_i = \frac{\Cov(A, B)}{\Var(A)\Var(B)},$$
+
+but since the $\Var(A) = \Var(B) = 1$, this is just
+
+$$r_i = \Cov(A, B).$$
+
+Then, by the definition of the covariance and since we know the values of $A$ and $B$ this is just
+
+$$r_i = \Cov(A, B) = \E[AB] = \frac{1}{k} \sum_{i = 1}^k A_i B_i,$$
+
+which, interestingly, is the cosine-distance if we treat these as scalars (an aside: since $\Var[A] = \Var[B] = 1$, this says $\frac{1}{k} \norm{A}_2^2 = \frac{1}{k} \norm{B}_2^2 = 1$, meaning that $\norm{A}_2 = \norm{B}_2 = \sqrt{k}$, so the cosine distance $\frac{A \cdot B}{\norm{A}_2 \norm{B}_2}$ is $\sum_{i = 1}^k A_i B_i / \sqrt{k * k} = \frac{1}{k} \sum_{i = 1}^k A_i B_i = r_i.$).
+
+Now, we want to run a statistical test to determine if the window ending at $t_0$ represents an anomaly. Then, we use the two hypotheses:
+
+$$H_0: \mu_{r_i} = \rho_i,
+~~~~~~~~~~~
+H_a: \mu_{r_i} \ne \rho_i.$$
+
+The null hypothesis, $H_0$, represents that the correlation between this window of the data is the same as the correlation that we would expect. This then represents that the data is as expected and that there is no anomaly. $H_a$ represents some sort of anomaly in the window. Our goal will then be to calculate the probability $p$ that this window has correlation $r_i$ given that $H_0$ is true, and if $p$ is "low enough" (to be discussed later) then we can say with confidence that there is an anomaly.
+
+Then, to calculate this probability, we want to know the distribution of $r_i$. We can think of $A_i$ and $B_i$ themselves as being random variables, so $A_i B_i$ is a random variable, and by our assumptions these are independent and identically distributed. Then, since $r_i$ is a sum of independent indentically distributed random variables, the Central Limit Theorem applies, which says that in the limit (as $k \to \infty$), that $r_i$ is normally distributed. This gives us a good approximation for the distribution of $r_i$. Then, since we assume that $\mu = \rho$, the only parameter we need estimate is the standard deviation of $r_i$. We have that this is
+
+$$\Var(r_i) = \Var(\frac{1}{k} \sum_{i = 1}^k A_i B_i) = \frac{1}{k^2} \sum_{i =1}^k \Var(A_i B_i),$$
+
+by linearity, but since $A_i B_i$ are all identically distributed, their variances are the same, so we can write this as
+
+$$ = \frac{1}{k} \Var(AB) = \E((AB - r_i)^2) = \frac{1}{k}\left(\E((AB)^2) - r_i^2\right),$$
+
+by a well-know formula for variance. To calculate $\E((AB)^2)$, we just do
+
+$$\E((AB)^2) = \sum{1}{k} \sum_{i=1}^k (A_i B_i)^2.$$
+
+Additionally, to get the sample variance, we multiply by $\frac{k}{k-1}$, so the full formula for $S^2_{r_i}$ is
+
+$$\Var(r_i) = \frac{1}{k-1}\left(\sum_{i=1}^k (A_i B_i)^2 - r_i^2\right).$$
+
+Then, this means that
+
+$$\frac{r_i - \rho}{\sqrt{S^2_{r_i}}}$$
+
+is distributed approximately normally, which means that given some other standard normal random variable $N$ that the probability of drawing $r_i$ randomly under the assumption that $\mu_{r_i} = \rho$ is
+
+$$p \approx P\left(|N| \ge \left|\frac{r_i - \rho}{\sqrt{S^2_{r_i}}}\right|\right)
+= 2P\left(N \le -\left|\frac{r_i - \rho}{\sqrt{S^2_{r_i}}}\right|\right),$$
+
+which we can calculate using existing normal CDF functions.
+
+\section{Finding $r_i$ efficiently}
+
+We can see from above that we can calculate $r_i$ in $\Theta(k)$ time, where $k$ is the the size of the window, which isn't bad. However, if we want the anomaly detection system to work in real-time, we want to calculate $r_i$ faster than this. We will show a method for calculating $r_i$ in amortized $\Theta(1)$ time and using $\Theta(k)$ memory, assuming that we are calculating $r_i$ for every window of size $k$.
+
+The method works by using two different queues that store the last $k$ values and additionally by maintaining a number of different accumulators that store some value that changes as we move from left to right.
+
+For calculating $r_i$, we have
+
+$$r_i = \Cov(A, B) = \Cov \left( \frac{X_i - \bar X}{\sigma_X}, \frac{Y_i - \bar Y}{\sigma_Y}\right)$$
+
+$$= \frac{1}{\sigma_X \sigma_Y} \Cov(X_i - \bar X, Y_i - \bar Y)$$
+
+
+%Then, let $\bar X = \E_{t_0 - k < t \le t_0}[f_i(C_i(t))]$ and $\bar Y =  \E_{t_0 - k < t \le t_0}[c_i(t)],$ the means of the predicted data series and the actual data series over the window. These are equal to
+
+%$$\bar X = \frac{1}{k} \sum_{i = 1}^k X_i,
+%~~~~~~~~~~ \bar Y = \frac{1}{k} \sum_{i = 1}^k Y_i.$$
+
+%Then, 
+
+
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
