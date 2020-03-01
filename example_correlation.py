@@ -32,6 +32,5 @@ plt.xlabel("Datapoint #")
 plt.ylabel("Value")
 plt.show()
 
-
 #Close the file
 f.close()
