@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import norm
 
 def sample_mean(x, n):
   return 1.0/n * sum(x[0:n])
@@ -11,7 +12,7 @@ def sample_var(x, n, mean = None):
     mean = sample_mean(x, n)
 
   
-  sample_var = 1.0/(n-1) * sum([(x[i] - mean)**2 for i in range(n)])
+  sample_var = 1.0/(n) * sum([(x[i] - mean)**2 for i in range(n)])
 
   return sample_var
 
@@ -47,7 +48,9 @@ def get_test_z(real, pred, corr):
 
   test_corr = sample_mean(product, n)
   var_corr = sample_var(product, n, mean = test_corr)
-  stat_std = math.sqrt(var_corr / n)
+  stat_std = math.sqrt(var_corr / (n - 1))
+
+  print(f"slow test_corr {test_corr} stat_std {stat_std}")
 
 
   # if corr is far away from test_corr, reject
@@ -82,60 +85,166 @@ class RotatingQueue():
 
     return old
 
-class MeanVarAccum():
+class StatsAccum():
 
   def __init__(self, window_size):
-    self.window_size = window_size
-    self.sum = 0
-    self.sum_squares = 0
-    self.data_queue = RotatingQueue(window_size)
+    self.k = window_size
+    self.n = 0
 
-  def add_point(self, x):
-    old_point = self.data_queue.add_pop(x)
+    self.x_queue = RotatingQueue(self.k)
+    self.y_queue = RotatingQueue(self.k)
 
-    self.sum = self.sum + x - old_point
-    self.sum_squares = self.sum_squares + x**2 - old_point**2
+    self.x_acc = 0
+    self.y_acc = 0
+    self.x2_acc = 0
+    self.y2_acc = 0
+    self.xy_acc = 0
+    self.x2y2_acc = 0
+    self.x2y_acc = 0
+    self.xy2_acc = 0
 
-  def get_mean(self):
-    return 1.0 * self.sum / self.window_size;
+  def add_point(self, x, y):
+    # described in "Finding r_i efficiently"
+    x_0 = self.x_queue.add_pop(x)
+    y_0 = self.y_queue.add_pop(y)
 
-  def get_var(self):
-    n = self.window_size
-    return 1.0 / n * self.sum_squares - self.get_mean() ** 2
+    self.x_acc += x - x_0
+    self.y_acc += y - y_0
 
-  def get_sample_var(self):
-    n = self.window_size
-    return 1.0 * n / (n - 1) * self.get_var()
+    self.x2_acc += x**2 - x_0**2
+    self.y2_acc += y**2 - y_0**2
 
-class CorrAccum():
+    self.xy_acc += x*y - x_0 * y_0
 
-  def __init__(self, window_size):
-    self.window_size = window_size
-    self.product_accum = MeanVarAccum(window_size)
-    self.predict_accum = MeanVarAccum(window_size)
-    self.sample_accum = MeanVarAccum(window_size)
+    self.x2y2_acc += (x*y)**2 - (x_0*y_0)**2
 
-  def add_point(self, x):
-    self.product_accum.add_point(x)
-    self.predict_accum.add_point(x)
-    self.sample_accum.add_point(x)
+    self.x2y_acc += (x**2) * y - (x_0**2) * y_0
+    self.xy2_acc += x * (y ** 2) - x_0 * (y_0 ** 2)
 
-  def get_stats():
-    # return test_corr, corr_std
-    # this finds E((x - mu_x)(y - mu_y)) = E(xy) - mu_x * mu_y
-    expectation_XY = self.product_accum.get_mean()
-    mean_X = self.sample_accum.get_mean()
-    mean_Y = self.predict_accum.get_mean()
+    if self.n < self.k:
+      self.n += 1
 
-    var_X = self.sample_accum.get_var()
-    var_Y = self.predict_accum.get_var()
+  def calc_stats(self):
+    # described in "Finding r_i efficiently"
 
-    covariance = expectation_XY - mean_X * mean_Y
+    if self.n < self.k:
+      return None
 
-    # this finds E(((x - mu_x)(y - mu_y)/sqrt(varX * varY) - test_corr))^2)
-    # = E(((x - mu_x)(y - mu_y))^2)/varX/varY - test_corr^2
-    # = 
-    test_corr = covariance / math.sqrt(var_X * var_Y)
+    k = 1.0 * self.k
+
+    sigma_x = 1 / k * math.sqrt(k * self.x2_acc - (self.x_acc ** 2))
+    sigma_y = 1 / k * math.sqrt(k * self.y2_acc - (self.y_acc ** 2))
+
+    #print(f"sigma_x: {sigma_x} sigma_y: {sigma_y}")
+
+    if sigma_x < 1e-6 or sigma_y < 1e-6:
+      return None, None
+
+
+
+    Exy = 1 / k * self.xy_acc
+    
+    x_bar = 1 / k * self.x_acc
+    y_bar = 1 / k * self.y_acc
+
+    r_i = 1 / (sigma_x * sigma_y) * (Exy - x_bar * y_bar)
+
+    Ex2y2 = 1 / k * self.x2y2_acc
+
+    Ey2 = 1 / k * self.y2_acc
+    Ex2 = 1 / k * self.x2_acc
+
+    Exy2 = 1 / k * self.xy2_acc
+    Ex2y = 1 / k * self.x2y_acc
+
+    # split it up
+    mult = 1 / (sigma_x **2 * sigma_y**2)
+
+    term1 = Ex2y2
+    term2 = (x_bar ** 2) * Ey2
+    term3 = (y_bar ** 2) * Ex2
+    term4 = -2 * x_bar * Exy2
+    term5 = -2 * y_bar * Ex2y
+    term6 = -3 * (x_bar ** 2) * (y_bar ** 2)
+    term7 = 4 * x_bar * y_bar * Exy
+
+    Ea2b2 = mult * (term1 + term2 + term3 + term4 + term5 + term6 + term7)
+
+    sample_var = (1 / (k-1)) * (Ea2b2 - r_i ** 2)
+    sample_std = math.sqrt(sample_var)
+
+    return r_i, sample_std
+
+  def calc_p(self, r_i, sample_std, rho):
+    # described in "Detecting Anomalies"
+    abs_z = abs((r_i - rho)/sample_std)
+    return 2 * norm.cdf(-1 * abs_z)
+
+acc = StatsAccum(10)
+
+for i in range(20):
+  acc.add_point(i, i % 3)
+  if (i >= 9):
+    print(acc.calc_stats())
+    get_test_z(acc.x_queue.buffer, acc.y_queue.buffer, 10)
+    
+
+
+
+# class MeanVarAccum():
+
+#   def __init__(self, window_size):
+#     self.window_size = window_size
+#     self.sum = 0
+#     self.sum_squares = 0
+#     self.data_queue = RotatingQueue(window_size)
+
+#   def add_point(self, x):
+#     old_point = self.data_queue.add_pop(x)
+
+#     self.sum = self.sum + x - old_point
+#     self.sum_squares = self.sum_squares + x**2 - old_point**2
+
+#   def get_mean(self):
+#     return 1.0 * self.sum / self.window_size;
+
+#   def get_var(self):
+#     n = self.window_size
+#     return 1.0 / n * self.sum_squares - self.get_mean() ** 2
+
+#   def get_sample_var(self):
+#     n = self.window_size
+#     return 1.0 * n / (n - 1) * self.get_var()
+
+# class CorrAccum():
+
+#   def __init__(self, window_size):
+#     self.window_size = window_size
+#     self.product_accum = MeanVarAccum(window_size)
+#     self.predict_accum = MeanVarAccum(window_size)
+#     self.sample_accum = MeanVarAccum(window_size)
+
+#   def add_point(self, x):
+#     self.product_accum.add_point(x)
+#     self.predict_accum.add_point(x)
+#     self.sample_accum.add_point(x)
+
+#   def get_stats():
+#     # return test_corr, corr_std
+#     # this finds E((x - mu_x)(y - mu_y)) = E(xy) - mu_x * mu_y
+#     expectation_XY = self.product_accum.get_mean()
+#     mean_X = self.sample_accum.get_mean()
+#     mean_Y = self.predict_accum.get_mean()
+
+#     var_X = self.sample_accum.get_var()
+#     var_Y = self.predict_accum.get_var()
+
+#     covariance = expectation_XY - mean_X * mean_Y
+
+#     # this finds E(((x - mu_x)(y - mu_y)/sqrt(varX * varY) - test_corr))^2)
+#     # = E(((x - mu_x)(y - mu_y))^2)/varX/varY - test_corr^2
+#     # = 
+#     test_corr = covariance / math.sqrt(var_X * var_Y)
 
 
 
