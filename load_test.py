@@ -7,7 +7,9 @@ from utils import *
 
 model = dict()
 
-channels,channel_dat = draw_sample(data_path="data")
+channels,channel_dat = draw_sample(data_path="data",total_samples=10000)
+model['data'] = dict()
+model['channels'] = channels
 
 # Load up previously computed correlation matrix (for what?)
 corr_M = np.load("corr_M.npy")
@@ -37,6 +39,6 @@ print(redundant_channels)
 # Verify
 for ch in channels:
 	print(f"{ch}: {sensors[ch].covariates}")
-	model[ch] = sensors[ch].lin_reg
+	model['data'][ch] = sensors[ch].lin_reg
 
-pickle.dump(model,open('unnormed_model.mdl','wb'))
+pickle.dump(model,open('unnormed_mixed_model.mdl','wb'))

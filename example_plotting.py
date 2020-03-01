@@ -13,10 +13,11 @@ WIN_SIZE = 50
 cwd = os.getcwd()
 
 #Open the data file
+folder = "data"
 data_files = []
-for file in os.listdir("data"):
+for file in os.listdir(folder):
 	if file.endswith(".hdf"):
-		data_files.append(cwd + "\\data" + f'\\{file}')
+		data_files.append(cwd + f'\\{folder}\\{file}')
 
 # Small sample test, just the first
 data_files = data_files[:1]
@@ -97,7 +98,7 @@ high_prediction_channels = ['ch_1', 'ch_10', 'ch_102', 'ch_103', 'ch_105', 'ch_1
 fail_channels = ['ch_40','ch_74']
 test_channels = ['ch_86','ch_89']
 inverse_channels = ['ch_33','ch_200']
-for ch in high_prediction_channels:
+for ch in ['ch_14']:
 	plot_channel(chanIDs,ch)
 
 #Close the file
