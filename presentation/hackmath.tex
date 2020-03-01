@@ -124,6 +124,10 @@ $$r_i = \Cov(A, B) = \E[AB] = \frac{1}{k} \sum_{i = 1}^k A_i B_i,$$
 
 which, interestingly, is the cosine-distance if we treat these as scalars (an aside: since $\Var[A] = \Var[B] = 1$, this says $\frac{1}{k} \norm{A}_2^2 = \frac{1}{k} \norm{B}_2^2 = 1$, meaning that $\norm{A}_2 = \norm{B}_2 = \sqrt{k}$, so the cosine distance $\frac{A \cdot B}{\norm{A}_2 \norm{B}_2}$ is $\sum_{i = 1}^k A_i B_i / \sqrt{k * k} = \frac{1}{k} \sum_{i = 1}^k A_i B_i = r_i.$).
 
+\section{Training $f_i$}
+
+Each $f_i$ is a linear model that takes in every channel but $c_i$ and predicts the value of $c_i$. If $z_i$ is the input that does not include the $i$th channel, we have that $f_i(z_i) = w_i \cdot z_i + b_i$, where $w_i$ is a vector of weights and $b_i$ is a single bias. The model is trained using \texttt{linear\_model} from \texttt{scikit-learn}.
+
 \section{Detecting Anomalies}
 
 Now, we want to run a statistical test to determine if the window ending at $t_0$ represents an anomaly. Then, we use the two hypotheses:
@@ -148,7 +152,7 @@ $$\E((AB)^2) = \frac{1}{k} \sum_{i=1}^k (A_i B_i)^2.$$
 
 Additionally, to get the sample variance, we multiply by $\frac{k}{k-1}$, so the full formula for $S^2_{r_i}$ is
 
-$$\Var(r_i) = \frac{1}{k-1}\left(\sum_{i=1}^k (A_i B_i)^2 - r_i^2\right).$$
+$$\Var(r_i) = \frac{1}{k-1}\left(\frac{1}{k}\sum_{i=1}^k (A_i B_i)^2 - r_i^2\right).$$
 
 Then, this means that
 
@@ -211,6 +215,15 @@ $$= \frac{1}{\sigma_X^2 \sigma_Y^2}\left(\E(X^2Y^2) - 2\bar Y \E(X^2Y)+ \bar Y^2
 $$\left. + 4\bar X\bar Y \E(XY) - 2\bar X^2 \bar Y^2 + \bar X^2 \E(Y^2) - 2\bar X^2 \bar Y^2 + \bar X^2 \bar Y^2 \right).$$
 $$= \frac{1}{\sigma_X^2 \sigma_Y^2}\left(\E(X^2Y^2)  + \bar X^2 \E(Y^2) + \bar Y^2\E(X^2) - 2\bar X\E(XY^2) - 2\bar Y \E(X^2Y)  - 3 \bar X^2 \bar Y^2 + 4\bar X\bar Y \E(XY)\right).$$
 
+However, this can actually be further simplified. We can write it as
+
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\left(\E(X^2Y^2)  + \bar X^2 (\E(Y^2) - \bar Y^2) + \bar Y^2( \E(X^2) - \bar X^2) - 2\bar X\E(XY^2) - 2\bar Y \E(X^2Y)  - \bar X^2 \bar Y^2 + 4\bar X\bar Y \E(XY)\right),$$
+
+which we can write as
+
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\left(\E(X^2Y^2)  + \bar X^2 \sigma_Y^2 + \bar Y^2 \sigma_X^2 - 2\bar X\E(XY^2) - 2\bar Y \E(X^2Y)  - \bar X^2 \bar Y^2 + 4\bar X\bar Y \E(XY)\right),$$
+
+
 Then, we have already described how to find $\sigma_X, \sigma_Y, \bar X, \bar Y,$ and $\E[XY]$. in the previous calculation of $r_i$. We will show how to find the other variables in terms of the accumulators below:
 
 $$\E[X^2Y^2] = \E[(XY^2) = \frac{1}{k} \sum{i=1}^k (X_iY_i)^2 = \frac{1}{k}\sum((XY)^2)$$
@@ -241,6 +254,18 @@ Here we will experimentally evaluate how well the approximation of assuming $r_i
 \includegraphics[width=0.33\linewidth]{rho09k500.png}
 
 If the approximation worked well, we would expect that $p$-values would be uniformly distributed. We see that this is the case for $\rho = 0.1$. Unfortunately, for high $\rho$, we see that the approximation breaks down. We see that in cases where the two series are highly correlated that the chance of a low $p$-value is very low. However, while this isn't optimal, it also isn't terrible as it just means that the false-positive rate of detecting anomalies will be lower.
+
+\section{Improvements}
+
+There are several things that could be improved for our model.
+
+\subsection{Detecting out-of-range failures}
+
+Since our model is based on the shape of the data itself, it can detect subtle in-range failures but will not work well for out of range failures that do not otherwise have some anomalous shape.
+
+\subsection{Changing how we compute $p$-values}
+
+We can see from the graphs in the previous section that the test does not give a uniform distribution of $p$-values as we would hope. In his paper, "A note on the distribution of the product of zero mean correlated normal random variables", Gaunt describes a way that $r_i$ should be distributed if we assume $X$ and $Y$ are normal (this is another assumption, but it may be a better one than assuming $r_i$ is normal). We tried to implement this model initially, but gave up after running into issues with the numerical integration.
 
 \end{document}
 
