@@ -133,15 +133,10 @@ class StatsAccum():
       print(f"kx - x^2 is negative (or ky - y^2): {kx_x2}, {ky_y2}")
       return None,None
 
-    sigma_x = 1 / k * math.sqrt(kx_x2)
-    sigma_y = 1 / k * math.sqrt(ky_y2)
+    sigma_x = max(0.01,1 / k * math.sqrt(kx_x2))
+    sigma_y = max(0.01,1 / k * math.sqrt(ky_y2))
 
     #print(f"sigma_x: {sigma_x} sigma_y: {sigma_y}")
-
-    if sigma_x < 1e-6 or sigma_y < 1e-6:
-      return None, None
-
-
 
     Exy = 1 / k * self.xy_acc
     
@@ -172,6 +167,9 @@ class StatsAccum():
     Ea2b2 = mult * (term1 + term2 + term3 + term4 + term5 + term6 + term7)
 
     sample_var = (Ea2b2 - r_i ** 2) / (k-1)
+    if (sample_var < 0):
+      print(f"Variance is Negative {sample_var}")
+      return None,None
     sample_std = math.sqrt(sample_var)
 
     return r_i, sample_std
@@ -181,6 +179,7 @@ class StatsAccum():
 
     r_i, sample_std = self.calc_stats()
     if (r_i is None):
+      print(r_i, sample_std)
       return 100
 
     abs_z = abs((r_i - rho)/sample_std)

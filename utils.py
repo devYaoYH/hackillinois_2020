@@ -116,13 +116,24 @@ def interpolate(data):
 	data[nans] = np.interp(x(nans), x(~nans), data[~nans])
 	return data
 
-def norm_zero(data):
-	std = np.std(data)
-	data -= np.mean(data)
-	if (std != 0):
-		return data/std
+def norm_zero(data,ret=False,norm=None):
+	if (norm is None):
+		std = np.std(data)
+		mean = np.mean(data)
 	else:
-		return data
+		std = norm[1]
+		mean = norm[0]
+	data -= mean
+	if (std != 0):
+		if (ret):
+			return data/std,mean,std
+		else:
+			return data/std
+	else:
+		if (ret):
+			return data,mean,std
+		else:
+			return data
 
 def SGD_log(X,Y,iters=1000):
 	print(X.shape)
@@ -136,7 +147,7 @@ def LIN_reg(X,Y):
 	reg.fit(X,Y)
 	return reg
 
-def draw_sample(data_path="data",total_samples=10000,filter=filter_data):
+def draw_sample(data_path="data",total_samples=10000,filter=filter_data,norm=None):
 	cwd = os.getcwd()
 	#Open the data file
 	data_files = []
@@ -157,6 +168,7 @@ def draw_sample(data_path="data",total_samples=10000,filter=filter_data):
 
 	num_channels = len(channels)
 	channel_dat = dict()
+	channel_norm = dict()
 	for i,ch in enumerate(channels):
 		# norm_t = time.time()
 		if (i%(num_channels//10) == 0):
@@ -170,10 +182,14 @@ def draw_sample(data_path="data",total_samples=10000,filter=filter_data):
 			else:
 				cur_slice = np.zeros(rand_data_slice_size[i])
 			compound_data = np.append(compound_data,cur_slice)
-		channel_dat[ch] = norm_zero(compound_data)
-	return channels,channel_dat
+		if (norm is None):
+			channel_dat[ch],mu,sigma = norm_zero(compound_data,ret=True)
+			channel_norm[ch] = (mu,sigma)
+		else:
+			channel_dat[ch] = norm_zero(compound_data,norm=norm[ch])
+	return channels,channel_dat,channel_norm if norm is None else norm
 
-def extract_data(data_file=None,filter=filter_data,max_len=10000):
+def extract_data(norm,data_file=None,filter=filter_data,max_len=10000):
 	if (data_file is None):
 		return None, None
 	cwd = os.getcwd()
@@ -188,6 +204,7 @@ def extract_data(data_file=None,filter=filter_data,max_len=10000):
 	else:
 		rand_end = 1
 	rand_start = np.random.randint(0,rand_end)
+	print(f"Extracting Random Test sample slice from: [{rand_start}, {rand_start + max_len}]")
 
 	# data_matrix = np.asmatrix([datas[ch]['MEASURED'][:max_len] for ch in channels])
 	# data_matrix.transpose()
@@ -203,5 +220,8 @@ def extract_data(data_file=None,filter=filter_data,max_len=10000):
 		if (i%(num_channels//10) == 0):
 			print(f"Processing: {ch} | ...{i*100/num_channels}\%")
 		# channel_dat[ch] = norm_zero(filter(np.asarray(datas[ch]['MEASURED'][:max_len])))
-		channel_dat[ch] = norm_zero(np.asarray(datas[ch]['MEASURED'][rand_start:rand_start+max_len]))
+		if (ch in norm):
+			channel_dat[ch] = norm_zero(np.asarray(datas[ch]['MEASURED'][rand_start:rand_start+max_len]),norm=norm[ch])
+		else:
+			channel_dat[ch] = norm_zero(np.asarray(datas[ch]['MEASURED'][rand_start:rand_start+max_len]))
 	return channels,channel_dat

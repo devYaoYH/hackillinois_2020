@@ -8,19 +8,21 @@ from utils import *
 
 model = dict()
 
-channels,channel_dat = draw_sample(data_path="data",total_samples=10000)
+channels,channel_dat,channel_norms = draw_sample(data_path="data",total_samples=10000)
 channel_to_idx = {ch: i for i,ch in enumerate(channels)}
 model['data'] = dict()
 model['channels'] = channels
+model['norms'] = channel_norms
 
-# Load up previously computed correlation matrix (for what?)
-corr_M = np.load("corr_M.npy")
-# Construct 0-1 matrix from corr_M given threshold
-pos = np.where(corr_M > 0.1)
-corr_M = np.zeros(corr_M.shape)
-for p in pos:
-	corr_M[p] = 1
-corr_M = corr_M - np.identity(corr_M.shape[0])
+# NOT USED
+# # Load up previously computed correlation matrix (for what?)
+# corr_M = np.load("corr_M.npy")
+# # Construct 0-1 matrix from corr_M given threshold
+# pos = np.where(corr_M > 0.1)
+# corr_M = np.zeros(corr_M.shape)
+# for p in pos:
+# 	corr_M[p] = 1
+# corr_M = corr_M - np.identity(corr_M.shape[0])
 
 # Initialize sensors
 sensors = {ch: Channel(ch,len(channels)) for ch in channels}
@@ -56,4 +58,4 @@ for ch in channels:
 	print(f"{ch}: {sensors[ch].covariates}")
 	model['data'][ch] = sensors[ch].lin_reg
 
-pickle.dump(model,open('normed_mixed_model2.mdl','wb'))
+pickle.dump(model,open('normed_mixed_model3.mdl','wb'))
