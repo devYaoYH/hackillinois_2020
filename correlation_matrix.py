@@ -7,11 +7,13 @@ import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 
-from visualization.Visualizer import Visualizer
+from utils import filter_data
+from utils import norm_zero
+from scipy.stats import pearsonr
 from scipy.stats import zscore
 # seed random number generator
 
-total_samples = 10000
+total_samples = 100000
 
 ##################
 # TIMER FUNCTION #
@@ -28,7 +30,7 @@ for file in os.listdir("data"):
 		data_files.append(cwd + "\\data" + f'\\{file}')
 
 # Just take first sample (Small test)
-data_files = data_files[:1]
+# data_files = data_files[:10]
 
 files = [h5py.File(f,'r') for f in data_files]
 datas = [f['DYNAMIC DATA'] for f in files]
@@ -36,7 +38,7 @@ sample_slice = total_samples//len(datas)
 
 #Show all channels available in file
 chanIDs = files[0]['DYNAMIC DATA']
-channels = list(chanIDs.keys())
+channels = sorted(list(chanIDs.keys()))
 
 rand_data_slice_init = [np.random.randint(0,len(d[channels[0]]['MEASURED'])-sample_slice) for d in datas]
 
@@ -44,13 +46,18 @@ num_channels = len(channels)
 channel_dat = dict()
 for ch in channels:
 	# norm_t = time.time()
+	print(f"Processing: {ch}")
 	compound_data = np.asarray([])
 	for i, d in enumerate(datas):
 		r_init = rand_data_slice_init[i]
-		compound_data = np.append(compound_data,np.asarray(d[ch]['MEASURED'][r_init:r_init + sample_slice]))
+		cur_slice = np.asarray(d[ch]['MEASURED'][r_init:r_init + sample_slice])
+		cur_slice = filter_data(cur_slice)
+		compound_data = np.append(compound_data,cur_slice)
 	# debug_time(f"Concat data",norm_t,time.time())
 	# channel_dat[ch] = zscore(list(itertools.chain.from_iterable(compound_data)))
-	channel_dat[ch] = zscore(compound_data)
+	# channel_dat[ch] = zscore(compound_data)
+	channel_dat[ch] = norm_zero(compound_data)
+	# channel_dat[ch] = compound_data
 	# channel_dat[ch] = zscore(datas[0][ch]['MEASURED'])
 	# debug_time(f"Normed channel {ch} | {len(compound_data)}",norm_t,time.time())
 
@@ -83,8 +90,16 @@ for i in range(num_channels-1):
 print(nan_channels)
 
 corr_M = np.square(np.asmatrix(corr_M,dtype=float))
+# for i in range(corr_M.shape[0]):
+# 	for j in range(corr_M.shape[1]):
+# 		if (corr_M[i,j] < 0):
+# 			corr_M[i,j] = -corr_M[i,j]**2
+# 		else:
+# 			corr_M[i,j] = corr_M[i,j]**2
+np.save("corr_M2",corr_M)
+
 my_dpi=96
 plt.figure(figsize=(2048/my_dpi,2048/my_dpi),dpi=my_dpi,frameon=False)
 plt.imshow(corr_M, cmap='cool', interpolation='nearest')
 # plt.show()
-plt.savefig('corr_matrix1.png',dpi=my_dpi*10)
+plt.savefig('corr_matrix_full2.png',dpi=my_dpi*2)

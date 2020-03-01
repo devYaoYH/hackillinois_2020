@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import queue
 
+from utils import *
 from scipy.stats import zscore
 
-WIN_SIZE = 25000
+WIN_SIZE = 50
 
 cwd = os.getcwd()
 
@@ -34,79 +35,43 @@ nan_channels = ['ch_101', 'ch_104', 'ch_107', 'ch_108', 'ch_112', 'ch_15', 'ch_1
 problematic_channels = ['ch_4','ch_6','ch_77','ch_78','ch_79','ch_80','ch_81','ch_83','ch_86','ch_89','ch_298']
 eighty_channels = [f'ch_{i}' for i in range(80,90)]
 
-# z-score running filter (Mutates data)
-def filter_data(data,w_size=100,sd_thresh=1,influence=0):
-	M1 = 0
-	M2 = 0
-	q = queue.Queue()
-
-	# Initialize running avg moments
-	for d in data[:w_size]:
-		q.put(d)
-	M1 = np.mean(data[:w_size])
-	M2 = np.mean(np.square(data[:w_size]))
-	var = M2 - M1**2
-	std = math.sqrt(var) if var != 0 else 0
-
-	for i in range(w_size):
-		if (abs(data[i] - M1) > sd_thresh*std):
-			data[i] = None
-
-	last_valid_val = 0
-	for d in data[:w_size]:
-		if (d is not None):
-			last_valid_val = d
-
-	# Start moving the window
-	for i in range(w_size,len(data)):
-		di_val = data[i]
-		if (abs(di_val - M1) > sd_thresh*std):
-			data[i] = None
-			di_val = influence*di_val + (1-influence)*last_valid_val
-		if (data[i] is not None):
-			last_valid_val = data[i]
-		sub_d = q.get()
-		M1 -= sub_d/w_size
-		M2 -= sub_d**2/w_size
-		M1 += di_val/w_size
-		M2 += di_val**2/w_size
-		q.put(di_val)
-	return data
-
-# Fill in None data entries with linear interpolation from boundaries
-def interpolate_data(data):
-	init_d = -1
-	end_d = -1
-	inter_range = [0,0]
-	for i in range(len(data)+1):
-		if (i < len(data) and math.isnan(data[i])):
-			if (inter_range[1] < i):
-				inter_range[0] = i
-				inter_range[1] = i+1
-			elif(inter_range[1] == i):
-				inter_range[1] = i+1
-		else:
-			if (inter_range[0] != inter_range[1]):
-				if (init_d == -1):
-					init_d = data[i] if i < len(data) else 0
-				end_d = data[i] if i < len(data) else init_d
-				# Linear interpolate between [init_d,end_d]
-				steps = (end_d-init_d)/(inter_range[1]-inter_range[0])
-				for k in range(inter_range[0],inter_range[1]):
-					data[k] = init_d + steps*(k-inter_range[0])
-				inter_range[0] = 0
-				inter_range[1] = 0
-				init_d = data[i]
-			else:
-				init_d = data[i] if i < len(data) else init_d
-	return data
-
 #Plot a sample dataset
-def plot_channel(data,ch,norm=True):
+def plot_channel(data,ch,norm=False):
 	ChannelName = ch
 	ch_dat = np.asarray(data[ChannelName]['MEASURED'])
-	ch_dat = filter_data(ch_dat,w_size=WIN_SIZE)
+	ch_dat = filter_data(ch_dat)
 	ch_dat = interpolate_data(ch_dat)
+	dset = ch_dat
+	ch_dat = np.asarray(data[ChannelName]['MEASURED'])
+	skip = False
+	if (norm):
+		std = np.std(dset)
+		dset -= np.mean(dset)
+		if (std != 0):
+			dset /= std
+			c_std = np.std(ch_dat)
+			ch_dat -= np.mean(ch_dat)
+			if (c_std != 0):
+				ch_dat /= c_std
+			else:
+				skip = True
+		else:
+			skip = True
+	if (not skip):
+		print(dset[:WIN_SIZE])
+		print(f"Num data points: {len(dset)} | Mean: {np.mean(dset)} | Std: {np.std(dset)}")
+		plt.plot(ch_dat,alpha=0.3)
+		plt.plot(dset) # plotting by columns
+		plt.title("Value of " + ChannelName)
+		plt.xlabel("Datapoint #")
+		plt.ylabel("Value")
+		plt.show()
+	else:
+		print(f"{ChannelName} is flat")
+
+def plot_channel_raw(data,ch,norm=False):
+	ChannelName = ch
+	ch_dat = np.asarray(data[ChannelName]['MEASURED'])
 	dset = ch_dat
 	skip = False
 	if (norm):
@@ -127,9 +92,13 @@ def plot_channel(data,ch,norm=True):
 	else:
 		print(f"{ChannelName} is flat")
 
-test_channels = ['ch_18','ch_84','ch_86','ch_89']
-for ch in test_channels:
-	plot_channel(chanIDs,ch,norm=True)
+high_prediction_channels = ['ch_1', 'ch_10', 'ch_102', 'ch_103', 'ch_105', 'ch_106', 'ch_11', 'ch_110', 'ch_111', 'ch_13', 'ch_14', 'ch_177', 'ch_184', 'ch_185', 'ch_187', 'ch_19', 'ch_198', 'ch_266', 'ch_298', 'ch_302', 'ch_303', 'ch_305', 'ch_31', 'ch_32', 'ch_35', 'ch_36', 'ch_37', 'ch_38', 'ch_39', 'ch_4', 'ch_40', 'ch_41', 'ch_42', 'ch_43', 'ch_46', 'ch_47', 'ch_48', 'ch_49', 'ch_50', 'ch_52', 'ch_53', 'ch_54', 'ch_55', 'ch_56', 'ch_57', 'ch_58', 'ch_59', 'ch_6', 'ch_60', 'ch_63', 'ch_65', 'ch_67', 'ch_68', 'ch_7', 'ch_71', 'ch_72', 'ch_73', 'ch_74', 'ch_76', 'ch_77', 'ch_78', 'ch_79', 'ch_8', 'ch_80', 'ch_81', 'ch_82', 'ch_83', 'ch_84', 'ch_86', 'ch_87', 'ch_88', 'ch_89', 'ch_9', 'ch_90', 'ch_91', 'ch_94', 'ch_95', 'ch_97', 'ch_98', 'ch_99']
+
+fail_channels = ['ch_40','ch_74']
+test_channels = ['ch_86','ch_89']
+inverse_channels = ['ch_33','ch_200']
+for ch in high_prediction_channels:
+	plot_channel(chanIDs,ch)
 
 #Close the file
 f.close()
