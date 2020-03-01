@@ -1,8 +1,9 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
-%\usepackage[left=0.7in,right=0.7in,top=1in,bottom=0.7in]{geometry}
+\usepackage[left=0.7in,right=0.7in,top=1in,bottom=0.7in]{geometry}
 \usepackage{amsfonts}
 \usepackage{amsmath}
+\usepackage{graphicx}
 
 \usepackage[sc]{mathpazo}
 \newcommand{\bN}{\mathbb{N}}
@@ -131,7 +132,7 @@ $$H_0: \mu_{r_i} = \rho_i,
 ~~~~~~~~~~~
 H_a: \mu_{r_i} \ne \rho_i.$$
 
-The null hypothesis, $H_0$, represents that the correlation between this window of the data is the same as the correlation that we would expect. This then represents that the data is as expected and that there is no anomaly. $H_a$ represents some sort of anomaly in the window. Our goal will then be to calculate the probability $p$ that this window has correlation $r_i$ given that $H_0$ is true, and if $p$ is "low enough" (to be discussed later) then we can say with confidence that there is an anomaly.
+The null hypothesis, $H_0$, represents that the correlation between this window of the data is the same as the correlation that we would expect. This then represents that the data is as expected and that there is no anomaly. $H_a$ represents some sort of anomaly in the window. Our goal will then be to calculate the probability $p$ that this window has correlation $r_i$ given that $H_0$ is true, and if $p$ is "low enough", meaning $p < \alpha$ for an $\alpha$ we will define later, then we can say with confidence that there is an anomaly.
 
 Then, to calculate this probability, we want to know the distribution of $r_i$. We can think of $A_i$ and $B_i$ themselves as being random variables, so $A_i B_i$ is a random variable, and by our assumptions these are independent and identically distributed. Then, since $r_i$ is a sum of independent indentically distributed random variables, the Central Limit Theorem applies, which says that in the limit (as $k \to \infty$), that $r_i$ is normally distributed. This gives us a good approximation for the distribution of $r_i$. Then, since we assume that $\mu = \rho$, the only parameter we need estimate is the standard deviation of $r_i$. We have that this is
 
@@ -143,7 +144,7 @@ $$ = \frac{1}{k} \Var(AB) = \E((AB - r_i)^2) = \frac{1}{k}\left(\E((AB)^2) - r_i
 
 by a well-know formula for variance. To calculate $\E((AB)^2)$, we just do
 
-$$\E((AB)^2) = \sum{1}{k} \sum_{i=1}^k (A_i B_i)^2.$$
+$$\E((AB)^2) = \frac{1}{k} \sum_{i=1}^k (A_i B_i)^2.$$
 
 Additionally, to get the sample variance, we multiply by $\frac{k}{k-1}$, so the full formula for $S^2_{r_i}$ is
 
@@ -173,23 +174,73 @@ For calculating $r_i$, we have
 $$r_i = \Cov(A, B) = \Cov \left( \frac{X - \bar X}{\sigma_X}, \frac{Y - \bar Y}{\sigma_Y}\right)$$
 
 $$= \frac{1}{\sigma_X \sigma_Y} \Cov(X - \bar X, Y - \bar Y)$$
-$$ = \frac{1}{\sigma_X \sigma_Y} \E[XY] - \bar X \bar Y.$$
+$$ = \frac{1}{\sigma_X \sigma_Y} (\E[XY] - \bar X \bar Y).$$
 
 We will write down how to calculate all of the variables in this expression in terms of our accumulators.
 
-$$\sigma_X = \frac{1}{n}$$
+$$\sigma_X = \sqrt{\E[(X - \E[X]^2)]}
+= \sqrt{\E[X^2] - \E[X]^2}
+= \sqrt{\frac{1}{k} \sum_{i = 1}^k X^2 - \left(\frac{1}{k} \sum_{i=1}^k X \right)^2}$$
+$$= \frac{1}{k} \sqrt{k\sum(X^2) - \sum(X)^2}
+$$
+$$\sigma_Y = \sqrt{\E[(Y - \E[Y]^2)]}
+= \sqrt{\E[Y^2] - \E[Y]^2}
+= \sqrt{\frac{1}{k} \sum_{i = 1}^k Y^2 - \left(\frac{1}{n} \sum_{i=1}^k Y \right)^2}$$
+$$= \frac{1}{k} \sqrt{\sum(Y^2) - k\sum(Y)^2}
+$$
+ 
+$$\E[XY] = \frac{1}{k} \sum_{k = 1}^k X Y = \frac{1}{k} \sum(XY)$$
+$$\bar X = \E[X] = \frac{1}{k} \sum_{i = 1}^k X = \frac{1}{k} \sum(X)$$
+$$\bar Y = \E[Y] = \frac{1}{k} \sum_{i = 1}^k Y = \frac{1}{k} \sum(Y)$$
 
+Now, we will show how to calculate $\Var(r).$ We know from above that this is
+$$\Var(r) = \frac{1}{k}\left(\E((AB)^2) - r^2\right),$$
+so since we know $r$ (we just calculated it) we only need to find $\E((AB)^2)$. Inserting the definitions for $A$ and $B$ this is
 
-%Then, let $\bar X = \E_{t_0 - k < t \le t_0}[f_i(C_i(t))]$ and $\bar Y =  \E_{t_0 - k < t \le t_0}[c_i(t)],$ the means of the predicted data series and the actual data series over the window. These are equal to
+$$\E((AB)^2) = \E\left(\left(\frac{X - \bar X}{\sigma_X} \cdot \frac{Y - \bar Y}{\sigma_Y} \right)^2 \right)$$
+$$ = \frac{1}{\sigma_X^2 \sigma_Y^2}\E\left((X - \bar X)^2(Y - \bar Y)^2 \right)$$
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\E\left((X^2 - 2X\bar X + \bar X^2)(Y^2 - 2Y\bar Y + \bar Y^2) \right)$$
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\E\left(X^2(Y^2 - 2Y\bar Y + \bar Y^2) - 2X\bar X(Y^2 - 2Y\bar Y + \bar Y^2) + \bar X^2(Y^2 - 2Y\bar Y + \bar Y^2) \right)$$
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\E\left(X^2Y^2 - 2X^2Y\bar Y + X^2\bar Y^2 - 2X\bar X Y^2 + 4X\bar XY\bar Y  - 2X\bar X \bar Y^2 + \bar X^2Y^2 - 2\bar X^2Y\bar Y + \bar X^2\bar Y^2) \right)$$
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\left(\E(X^2Y^2) - 2\E(X^2Y)\bar Y + \E(X^2)\bar Y^2 - 2\E(XY^2)\bar X\right.$$ 
+$$\left. + 4\E(XY) \bar X\bar Y  - 2\E(X) \bar X \bar Y^2 + \bar X^2 \E(Y^2) - 2\E(Y)\bar X^2\bar Y + \bar X^2\bar Y^2 \right).$$
 
-%$$\bar X = \frac{1}{k} \sum_{i = 1}^k X_i,
-%~~~~~~~~~~ \bar Y = \frac{1}{k} \sum_{i = 1}^k Y_i.$$
+Then, noting that $\E[X] = \bar X$ and $\E[Y] = \bar Y$, we can simply this further and some terms cancel out, getting
 
-%Then, 
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\left(\E(X^2Y^2) - 2\bar Y \E(X^2Y)+ \bar Y^2\E(X^2) - 2\bar X\E(XY^2) \right.$$ 
+$$\left. + 4\bar X\bar Y \E(XY) - 2\bar X^2 \bar Y^2 + \bar X^2 \E(Y^2) - 2\bar X^2 \bar Y^2 + \bar X^2 \bar Y^2 \right).$$
+$$= \frac{1}{\sigma_X^2 \sigma_Y^2}\left(\E(X^2Y^2)  + \bar X^2 \E(Y^2) + \bar Y^2\E(X^2) - 2\bar X\E(XY^2) - 2\bar Y \E(X^2Y)  - 3 \bar X^2 \bar Y^2 + 4\bar X\bar Y \E(XY)\right).$$
 
+Then, we have already described how to find $\sigma_X, \sigma_Y, \bar X, \bar Y,$ and $\E[XY]$. in the previous calculation of $r_i$. We will show how to find the other variables in terms of the accumulators below:
 
+$$\E[X^2Y^2] = \E[(XY^2) = \frac{1}{k} \sum{i=1}^k (X_iY_i)^2 = \frac{1}{k}\sum((XY)^2)$$
+$$\E[Y^2] = \frac{1}{k} \sum_{i = 1}^k Y_i^2 = \frac{1}{k} \sum(Y^2)$$
+$$\E[X^2] = \frac{1}{k} \sum_{i = 1}^k X_i^2 = \frac{1}{k} \sum(X^2)$$
+$$\E[XY^2] = \frac{1}{k} \sum_{i = 1}^k X_iY_i^2 = \frac{1}{k} \sum(XY^2)$$
+$$\E[X^2Y] = \frac{1}{k} \sum_{i = 1}^k X_i^2Y_i = \frac{1}{k} \sum(X^2Y)$$
 
+\section{Choosing $\alpha$}
 
+When we run our statistical test, we will reject $H_0$ if $p < \alpha$, meaning that we detect an anomaly. However, since we will our anomaly detection algorithm will be running many times, if we set $\alpha = 0.05$, if the algorithm run 100 times and there are no malfunctioning sensors, we will still report on average 5 anomalies. Then, we see that we need to make $\alpha$ much lower. We will set $\alpha$ such that, given every sensor is working (meaning $H_0$ is true) the probability that there will be no reported anomalies is $\alpha_0$. Then, if the probability of a single test reporting an anomaly is $\alpha$, the probability it does not report one is $1 - \alpha$, so the probability that given $N$ tests we return no anomalies is $(1 - \alpha)^N$. Then, the probability of at least one anomaly being reported is $1 - (1- \alpha)^N$, so we want to have $1 - (1 - \alpha)^N < \alpha_0$, so
+$$1 - \alpha_0 < (1 - \alpha)^N$$
+$$\sqrt[n]{1 - \alpha_0} < 1 - \alpha$$
+$$\alpha < 1 - \sqrt[n]{1 - \alpha_0}.$$
+
+Then, for example, if we want $\alpha_0 = 0.05$, so if we have $N = 200,000$ tests and want $\alpha_0 = 0.05$, then $\alpha = 2.564 \times 10^{-7}$.
+
+\section{Evaluating the Approximation}
+
+Here we will experimentally evaluate how well the approximation of assuming $r_i$ is normally distributed works. With $10,000$ trials in each test, we randomly generated $k$ data points of standard normal $X$ and $Y$s which have correlation coefficient $\rho$, and used $X$ as the predicted sample and $Y$ as the actual sample. We ran the test in each trial and calculated a $p$-value. The distributions of the $p$-values in the cases we tested are shown below.
+
+\includegraphics[width=0.33\linewidth]{rho01k50.png}
+\includegraphics[width=0.33\linewidth]{rho05k50.png}
+\includegraphics[width=0.33\linewidth]{rho09k50.png}
+
+\includegraphics[width=0.33\linewidth]{rho1k500.png}
+\includegraphics[width=0.33\linewidth]{rho05k500.png}
+\includegraphics[width=0.33\linewidth]{rho09k500.png}
+
+If the approximation worked well, we would expect that $p$-values would be uniformly distributed. We see that this is the case for $\rho = 0.1$. Unfortunately, for high $\rho$, we see that the approximation breaks down. We see that in cases where the two series are highly correlated that the chance of a low $p$-value is very low. However, while this isn't optimal, it also isn't terrible as it just means that the false-positive rate of detecting anomalies will be lower.
 
 \end{document}
 

@@ -147,7 +147,7 @@ class StatsAccum():
     Ex2y = 1 / k * self.x2y_acc
 
     # split it up
-    mult = 1 / (sigma_x **2 * sigma_y**2)
+    mult = 1.0 / ((sigma_x ** 2) * (sigma_y ** 2))
 
     term1 = Ex2y2
     term2 = (x_bar ** 2) * Ey2
@@ -159,7 +159,7 @@ class StatsAccum():
 
     Ea2b2 = mult * (term1 + term2 + term3 + term4 + term5 + term6 + term7)
 
-    sample_var = (1 / (k-1)) * (Ea2b2 - r_i ** 2)
+    sample_var = (Ea2b2 - r_i ** 2) / (k-1)
     sample_std = math.sqrt(sample_var)
 
     return r_i, sample_std
