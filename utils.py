@@ -189,7 +189,7 @@ def draw_sample(data_path="data",total_samples=10000,filter=filter_data,norm=Non
 			channel_dat[ch] = norm_zero(compound_data,norm=norm[ch])
 	return channels,channel_dat,channel_norm if norm is None else norm
 
-def extract_data(norm,data_file=None,filter=filter_data,max_len=10000):
+def extract_data(norm,data_file=None,filter=filter_data,max_len=10000,r_slice=None):
 	if (data_file is None):
 		return None, None
 	cwd = os.getcwd()
@@ -204,6 +204,8 @@ def extract_data(norm,data_file=None,filter=filter_data,max_len=10000):
 	else:
 		rand_end = 1
 	rand_start = np.random.randint(0,rand_end)
+	if (r_slice is not None):
+		rand_start = r_slice[0]
 	print(f"Extracting Random Test sample slice from: [{rand_start}, {rand_start + max_len}]")
 
 	# data_matrix = np.asmatrix([datas[ch]['MEASURED'][:max_len] for ch in channels])

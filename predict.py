@@ -62,7 +62,9 @@ def is_anomalous(predicted,Y,rho):
 	return -1
 
 def run_test(target_channels=None,dat_file=None):
-	avail_channels, channel_dat = extract_data(channel_norms,data_file="train\\COOLCAT_20100815_055813_69_20100815_055813_695.hdf" if dat_file is None else dat_file, max_len=1000)
+	# t_file = "COOLCAT_20100815_055813_69_20100815_055813_695"
+	t_file = "COOLCAT_20100612_062257_48_20100612_062257_485"
+	avail_channels, channel_dat = extract_data(channel_norms,data_file=f"train\\{t_file}.hdf" if dat_file is None else dat_file, max_len=1000)
 	# avail_channels, channel_dat = draw_sample(data_path="train",total_samples=10000)
 	data_length = len(channel_dat[list(channel_dat.keys())[0]])
 
