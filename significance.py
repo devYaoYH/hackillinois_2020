@@ -92,6 +92,8 @@ class StatsAccum():
     self.x2y_acc = 0
     self.xy2_acc = 0
 
+    self.EPSILON = 0.000001
+
   def add_point(self, x, y):
     # described in "Finding r_i efficiently"
     x_0 = self.x_queue.add_pop(x)
@@ -121,8 +123,18 @@ class StatsAccum():
 
     k = 1.0 * self.k
 
-    sigma_x = 1 / k * math.sqrt(k * self.x2_acc - (self.x_acc ** 2))
-    sigma_y = 1 / k * math.sqrt(k * self.y2_acc - (self.y_acc ** 2))
+    kx_x2 = k * self.x2_acc - (self.x_acc ** 2)
+    ky_y2 = k * self.y2_acc - (self.y_acc ** 2)
+    if (abs(kx_x2) < self.EPSILON):
+      kx_x2 = 0
+    if (abs(ky_y2) < self.EPSILON):
+      ky_y2 = 0
+    if (kx_x2 < 0 or ky_y2 < 0):
+      print(f"kx - x^2 is negative (or ky - y^2): {kx_x2}, {ky_y2}")
+      return None,None
+
+    sigma_x = 1 / k * math.sqrt(kx_x2)
+    sigma_y = 1 / k * math.sqrt(ky_y2)
 
     #print(f"sigma_x: {sigma_x} sigma_y: {sigma_y}")
 
@@ -168,6 +180,8 @@ class StatsAccum():
     # described in "Detecting Anomalies"
 
     r_i, sample_std = self.calc_stats()
+    if (r_i is None):
+      return 100
 
     abs_z = abs((r_i - rho)/sample_std)
     return 2 * norm.cdf(-1 * abs_z)

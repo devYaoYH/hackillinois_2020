@@ -56,4 +56,4 @@ for ch in channels:
 	print(f"{ch}: {sensors[ch].covariates}")
 	model['data'][ch] = sensors[ch].lin_reg
 
-pickle.dump(model,open('normed_mixed_model.mdl','wb'))
+pickle.dump(model,open('normed_mixed_model2.mdl','wb'))

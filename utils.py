@@ -30,7 +30,8 @@ class Channel(object):
 					if (abs(p) > 1):
 						print(f"High correlation w Channel {labels[i-1]}: {p}")
 					self.covariates.append(labels[i-1])
-		return r2_fit, est.params
+		# return r2_fit, est.params
+		return r2_fit, self.lin_reg.coef_
 	def predict(self,X):
 		X = X.transpose()
 		if (self.lin_reg is None):
